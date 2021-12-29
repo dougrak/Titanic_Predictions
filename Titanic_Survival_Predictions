@@ -1,0 +1,1412 @@
+{
+  "metadata": {
+    "kernelspec": {
+      "language": "python",
+      "display_name": "Python 3",
+      "name": "python3"
+    },
+    "language_info": {
+      "pygments_lexer": "ipython3",
+      "nbconvert_exporter": "python",
+      "version": "3.6.4",
+      "file_extension": ".py",
+      "codemirror_mode": {
+        "name": "ipython",
+        "version": 3
+      },
+      "name": "python",
+      "mimetype": "text/x-python"
+    },
+    "colab": {
+      "name": "fork-of-titanic-attempt.ipynb",
+      "provenance": []
+    }
+  },
+  "nbformat_minor": 0,
+  "nbformat": 4,
+  "cells": [
+    {
+      "cell_type": "code",
+      "source": [
+        "import numpy as np\n",
+        "import pandas as pd \n",
+        "import os\n",
+        "import seaborn as sns\n",
+        "import matplotlib.pyplot as plt\n",
+        "%matplotlib inline\n",
+        "from sklearn.preprocessing import StandardScaler\n",
+        "from sklearn.model_selection import cross_val_score\n",
+        "from sklearn.compose import ColumnTransformer\n",
+        "from sklearn.linear_model import LogisticRegression\n",
+        "from sklearn.svm import SVC, LinearSVC\n",
+        "from sklearn.ensemble import GradientBoostingClassifier\n",
+        "from sklearn.neighbors import KNeighborsClassifier\n",
+        "from sklearn.naive_bayes import GaussianNB\n",
+        "from sklearn.linear_model import Perceptron\n",
+        "from sklearn.linear_model import SGDClassifier\n",
+        "from sklearn.ensemble import RandomForestClassifier"
+      ],
+      "metadata": {
+        "_uuid": "8f2839f25d086af736a60e9eeb907d3b93b6e0e5",
+        "_cell_guid": "b1076dfc-b9ad-4769-8c92-a6c4dae69d19",
+        "execution": {
+          "iopub.status.busy": "2021-12-15T02:27:31.013949Z",
+          "iopub.execute_input": "2021-12-15T02:27:31.015172Z",
+          "iopub.status.idle": "2021-12-15T02:27:31.026608Z",
+          "shell.execute_reply.started": "2021-12-15T02:27:31.015081Z",
+          "shell.execute_reply": "2021-12-15T02:27:31.025547Z"
+        },
+        "trusted": true,
+        "id": "aXeZvarmviKx"
+      },
+      "execution_count": null,
+      "outputs": []
+    },
+    {
+      "cell_type": "markdown",
+      "source": [
+        "## Load Data\n",
+        "Create train and test datasets then combine for easier manipulation down the road"
+      ],
+      "metadata": {
+        "id": "tUEVXdO8viK5"
+      }
+    },
+    {
+      "cell_type": "code",
+      "source": [
+        "#Load data\n",
+        "train = pd.read_csv('/kaggle/input/titanic/train.csv')\n",
+        "test = pd.read_csv('/kaggle/input/titanic/test.csv')\n",
+        "\n",
+        "#Combine for easier manipulation\n",
+        "combine = [train, test]"
+      ],
+      "metadata": {
+        "execution": {
+          "iopub.status.busy": "2021-12-15T02:27:31.028584Z",
+          "iopub.execute_input": "2021-12-15T02:27:31.028946Z",
+          "iopub.status.idle": "2021-12-15T02:27:31.063133Z",
+          "shell.execute_reply.started": "2021-12-15T02:27:31.028902Z",
+          "shell.execute_reply": "2021-12-15T02:27:31.062041Z"
+        },
+        "trusted": true,
+        "id": "TyfVom_bviK7"
+      },
+      "execution_count": null,
+      "outputs": []
+    },
+    {
+      "cell_type": "markdown",
+      "source": [
+        "## EDA"
+      ],
+      "metadata": {
+        "id": "wKWbemApviK8"
+      }
+    },
+    {
+      "cell_type": "code",
+      "source": [
+        "train.columns.values"
+      ],
+      "metadata": {
+        "execution": {
+          "iopub.status.busy": "2021-12-15T02:27:31.064998Z",
+          "iopub.execute_input": "2021-12-15T02:27:31.065463Z",
+          "iopub.status.idle": "2021-12-15T02:27:31.073231Z",
+          "shell.execute_reply.started": "2021-12-15T02:27:31.065374Z",
+          "shell.execute_reply": "2021-12-15T02:27:31.072346Z"
+        },
+        "trusted": true,
+        "id": "H0ZQZELcviK9"
+      },
+      "execution_count": null,
+      "outputs": []
+    },
+    {
+      "cell_type": "markdown",
+      "source": [
+        "**What can the first rows tell us about the data?**\n",
+        "* Categorical\n",
+        "    * Survived, Pclass, Name, Sex, Ticket, Cabin, Embarked\n",
+        "* Numerical\n",
+        "    * Continuous: Age, Fare\n",
+        "    * Discrete: SibSp, Parch\n",
+        "* Some tickets are alphanumeric\n",
+        "* Cabins are alphanumeric\n",
+        "* 3 different values for Pclass (1, 2, 3)\n",
+        "* Survived is 1 or 0\n",
+        "* Name may contain additional names surrounded by parentheses"
+      ],
+      "metadata": {
+        "id": "vv8qDkA-viK9"
+      }
+    },
+    {
+      "cell_type": "code",
+      "source": [
+        "train.head(10)"
+      ],
+      "metadata": {
+        "execution": {
+          "iopub.status.busy": "2021-12-15T02:27:31.075563Z",
+          "iopub.execute_input": "2021-12-15T02:27:31.076869Z",
+          "iopub.status.idle": "2021-12-15T02:27:31.101227Z",
+          "shell.execute_reply.started": "2021-12-15T02:27:31.076814Z",
+          "shell.execute_reply": "2021-12-15T02:27:31.100114Z"
+        },
+        "trusted": true,
+        "id": "He0RuRxsviK-"
+      },
+      "execution_count": null,
+      "outputs": []
+    },
+    {
+      "cell_type": "markdown",
+      "source": [
+        "**Which columns are missing values? What are the data types of each column?**\n",
+        "\n",
+        "Age (some missing), Cabin (most missing), Embarked (only a few), and Fare (one)"
+      ],
+      "metadata": {
+        "id": "oD4U3JEzviK_"
+      }
+    },
+    {
+      "cell_type": "code",
+      "source": [
+        "train.info()"
+      ],
+      "metadata": {
+        "execution": {
+          "iopub.status.busy": "2021-12-15T02:27:31.102593Z",
+          "iopub.execute_input": "2021-12-15T02:27:31.103234Z",
+          "iopub.status.idle": "2021-12-15T02:27:31.118298Z",
+          "shell.execute_reply.started": "2021-12-15T02:27:31.103188Z",
+          "shell.execute_reply": "2021-12-15T02:27:31.117523Z"
+        },
+        "trusted": true,
+        "id": "zFk8oNYsviLA"
+      },
+      "execution_count": null,
+      "outputs": []
+    },
+    {
+      "cell_type": "code",
+      "source": [
+        "test.info()"
+      ],
+      "metadata": {
+        "execution": {
+          "iopub.status.busy": "2021-12-15T02:27:31.11943Z",
+          "iopub.execute_input": "2021-12-15T02:27:31.120229Z",
+          "iopub.status.idle": "2021-12-15T02:27:31.132435Z",
+          "shell.execute_reply.started": "2021-12-15T02:27:31.120183Z",
+          "shell.execute_reply": "2021-12-15T02:27:31.131758Z"
+        },
+        "trusted": true,
+        "id": "c1YskZe1viLC"
+      },
+      "execution_count": null,
+      "outputs": []
+    },
+    {
+      "cell_type": "markdown",
+      "source": [
+        "**Summary of Numerical Features**\n",
+        "\n",
+        "* 38% of the sample survived (32% of the total population survived)\n",
+        "* Most people were in 2nd or 3rd class\n",
+        "* 75% of the sample were relatively young (age 38 or younger)\n",
+        "* The oldest person in the sample was 80 years old\n",
+        "* Less than 50% of passengers traveled with a sibling\n",
+        "* More than 75% of passengers traveled with parents or children\n",
+        "* Around 75% of the sample paid less than the mean ticket price of $32.20\n",
+        "    * A relatively small number of passengers must have paid for very expensive tickets (highest = $512)\n",
+        "\n"
+      ],
+      "metadata": {
+        "id": "TeCV6tvDviLD"
+      }
+    },
+    {
+      "cell_type": "code",
+      "source": [
+        "train.describe()"
+      ],
+      "metadata": {
+        "execution": {
+          "iopub.status.busy": "2021-12-15T02:27:31.134297Z",
+          "iopub.execute_input": "2021-12-15T02:27:31.134878Z",
+          "iopub.status.idle": "2021-12-15T02:27:31.168831Z",
+          "shell.execute_reply.started": "2021-12-15T02:27:31.134832Z",
+          "shell.execute_reply": "2021-12-15T02:27:31.167813Z"
+        },
+        "trusted": true,
+        "id": "pdSDWy-BviLE"
+      },
+      "execution_count": null,
+      "outputs": []
+    },
+    {
+      "cell_type": "markdown",
+      "source": [
+        "**Summary of Categorical Features**\n",
+        "* All names are unique\n",
+        "* Only two different sexes with the most common being male (577 males or 65% of total)\n",
+        "* Some duplicate tickets\n",
+        "* Some duplicate cabins\n",
+        "* 3 different cities of embarkation"
+      ],
+      "metadata": {
+        "id": "mIYXE8_DviLE"
+      }
+    },
+    {
+      "cell_type": "code",
+      "source": [
+        "train.describe(include=['O'])"
+      ],
+      "metadata": {
+        "execution": {
+          "iopub.status.busy": "2021-12-15T02:27:31.170564Z",
+          "iopub.execute_input": "2021-12-15T02:27:31.170846Z",
+          "iopub.status.idle": "2021-12-15T02:27:31.197414Z",
+          "shell.execute_reply.started": "2021-12-15T02:27:31.170815Z",
+          "shell.execute_reply": "2021-12-15T02:27:31.196245Z"
+        },
+        "trusted": true,
+        "id": "_3sdJMumviLF"
+      },
+      "execution_count": null,
+      "outputs": []
+    },
+    {
+      "cell_type": "markdown",
+      "source": [
+        "## Who was most likely to survive?\n",
+        "**Men or women?**\n",
+        "* 74% of women and only 19% of men"
+      ],
+      "metadata": {
+        "id": "kSaYuntEviLF"
+      }
+    },
+    {
+      "cell_type": "markdown",
+      "source": [
+        ""
+      ],
+      "metadata": {
+        "id": "mxShGvaZviLF"
+      }
+    },
+    {
+      "cell_type": "code",
+      "source": [
+        "#Women's and Men's survival rates (example code)\n",
+        "women = train.loc[train.Sex == 'female'][\"Survived\"]\n",
+        "rate_women = sum(women)/len(women)\n",
+        "\n",
+        "men = train.loc[train.Sex == 'male']['Survived']\n",
+        "rate_men = sum(men) / len(men)\n",
+        "\n",
+        "print(\"% of women who survived:\", rate_women)\n",
+        "print(\"% of men who survived:\", rate_men)"
+      ],
+      "metadata": {
+        "execution": {
+          "iopub.status.busy": "2021-12-15T02:27:31.200268Z",
+          "iopub.execute_input": "2021-12-15T02:27:31.201112Z",
+          "iopub.status.idle": "2021-12-15T02:27:31.210473Z",
+          "shell.execute_reply.started": "2021-12-15T02:27:31.201035Z",
+          "shell.execute_reply": "2021-12-15T02:27:31.209821Z"
+        },
+        "trusted": true,
+        "id": "ypC6ck5fviLF"
+      },
+      "execution_count": null,
+      "outputs": []
+    },
+    {
+      "cell_type": "markdown",
+      "source": [
+        "**Rich or poor?**\n",
+        "* Over 90% of first and second class women compared to half of 3rd class women\n",
+        "* More first class than the combined amount of second and third class"
+      ],
+      "metadata": {
+        "id": "SDEwzYPUviLG"
+      }
+    },
+    {
+      "cell_type": "code",
+      "source": [
+        "#Pivot table by gender and class\n",
+        "table = pd.pivot_table(train, index=['Sex', 'Pclass'],\n",
+        "                       values=['Age', 'Fare', 'Survived',])\n",
+        "table"
+      ],
+      "metadata": {
+        "execution": {
+          "iopub.status.busy": "2021-12-15T02:27:31.212923Z",
+          "iopub.execute_input": "2021-12-15T02:27:31.213773Z",
+          "iopub.status.idle": "2021-12-15T02:27:31.241601Z",
+          "shell.execute_reply.started": "2021-12-15T02:27:31.213723Z",
+          "shell.execute_reply": "2021-12-15T02:27:31.240912Z"
+        },
+        "trusted": true,
+        "id": "fnTPqPTIviLG"
+      },
+      "execution_count": null,
+      "outputs": []
+    },
+    {
+      "cell_type": "code",
+      "source": [
+        "#Table of Number of Siblings and percent Survived\n",
+        "train[['SibSp', 'Survived']].groupby(['SibSp'], as_index=False).mean().sort_values(by='Survived', ascending=False)"
+      ],
+      "metadata": {
+        "execution": {
+          "iopub.status.busy": "2021-12-15T02:27:31.243286Z",
+          "iopub.execute_input": "2021-12-15T02:27:31.243961Z",
+          "iopub.status.idle": "2021-12-15T02:27:31.260346Z",
+          "shell.execute_reply.started": "2021-12-15T02:27:31.243926Z",
+          "shell.execute_reply": "2021-12-15T02:27:31.25923Z"
+        },
+        "trusted": true,
+        "id": "e81P_V72viLG"
+      },
+      "execution_count": null,
+      "outputs": []
+    },
+    {
+      "cell_type": "markdown",
+      "source": [
+        "## Data Visualization\n",
+        "Survival by Class"
+      ],
+      "metadata": {
+        "id": "jzMuydRsviLH"
+      }
+    },
+    {
+      "cell_type": "code",
+      "source": [
+        "g = sns.FacetGrid(train, col='Survived')\n",
+        "g.map(plt.hist, 'Pclass', bins=3)"
+      ],
+      "metadata": {
+        "execution": {
+          "iopub.status.busy": "2021-12-15T02:27:31.262286Z",
+          "iopub.execute_input": "2021-12-15T02:27:31.262856Z",
+          "iopub.status.idle": "2021-12-15T02:27:31.793896Z",
+          "shell.execute_reply.started": "2021-12-15T02:27:31.262809Z",
+          "shell.execute_reply": "2021-12-15T02:27:31.793148Z"
+        },
+        "trusted": true,
+        "id": "s745OdSuviLH"
+      },
+      "execution_count": null,
+      "outputs": []
+    },
+    {
+      "cell_type": "markdown",
+      "source": [
+        "Survival by Age Group"
+      ],
+      "metadata": {
+        "id": "qdZOFs3nviLH"
+      }
+    },
+    {
+      "cell_type": "code",
+      "source": [
+        "g = sns.FacetGrid(train, col='Survived')\n",
+        "g.map(plt.hist, 'Age', bins=20)"
+      ],
+      "metadata": {
+        "execution": {
+          "iopub.status.busy": "2021-12-15T02:27:31.795435Z",
+          "iopub.execute_input": "2021-12-15T02:27:31.795932Z",
+          "iopub.status.idle": "2021-12-15T02:27:32.414204Z",
+          "shell.execute_reply.started": "2021-12-15T02:27:31.795878Z",
+          "shell.execute_reply": "2021-12-15T02:27:32.413321Z"
+        },
+        "trusted": true,
+        "id": "ltT6JCbaviLI"
+      },
+      "execution_count": null,
+      "outputs": []
+    },
+    {
+      "cell_type": "markdown",
+      "source": [
+        "## Feature Engineering"
+      ],
+      "metadata": {
+        "id": "CfiSivsDviLI"
+      }
+    },
+    {
+      "cell_type": "code",
+      "source": [
+        "#Create Title\n",
+        "for df in combine:\n",
+        "    df['Title'] = df.Name.str.split('[,.]', expand=False).str[1]\n",
+        "\n",
+        "pd.crosstab(train['Title'], train['Sex'])\n"
+      ],
+      "metadata": {
+        "execution": {
+          "iopub.status.busy": "2021-12-15T02:27:32.415864Z",
+          "iopub.execute_input": "2021-12-15T02:27:32.416172Z",
+          "iopub.status.idle": "2021-12-15T02:27:32.450174Z",
+          "shell.execute_reply.started": "2021-12-15T02:27:32.416136Z",
+          "shell.execute_reply": "2021-12-15T02:27:32.448963Z"
+        },
+        "trusted": true,
+        "id": "wo2BTw2aviLI"
+      },
+      "execution_count": null,
+      "outputs": []
+    },
+    {
+      "cell_type": "code",
+      "source": [
+        "#Clean up titles\n",
+        "rare = '|'.join(['Lady', 'the Countess','Capt', 'Col', 'Dona','Don', 'Dr', 'Major', 'Rev', 'Sir', 'Jonkheer'])\n",
+        "\n",
+        "for df in combine:\n",
+        "    df['Title'] = df['Title'].str.replace(rare, 'Rare')\n",
+        "    df['Title'] = df['Title'].str.replace('Mlle', 'Miss')\n",
+        "    df['Title'] = df['Title'].str.replace('Ms', 'Miss')\n",
+        "    df['Title'] = df['Title'].str.replace('Mme', 'Mrs')\n",
+        "\n",
+        "print(pd.crosstab(train['Title'], train['Sex']))\n",
+        "print()\n",
+        "print(train[['Title', 'Survived']].groupby(['Title'], as_index=False).mean())"
+      ],
+      "metadata": {
+        "execution": {
+          "iopub.status.busy": "2021-12-15T02:27:32.452305Z",
+          "iopub.execute_input": "2021-12-15T02:27:32.452729Z",
+          "iopub.status.idle": "2021-12-15T02:27:32.495796Z",
+          "shell.execute_reply.started": "2021-12-15T02:27:32.452674Z",
+          "shell.execute_reply": "2021-12-15T02:27:32.494872Z"
+        },
+        "trusted": true,
+        "id": "kMjTeSS8viLI"
+      },
+      "execution_count": null,
+      "outputs": []
+    },
+    {
+      "cell_type": "markdown",
+      "source": [
+        "### Convert categorical features to numerical"
+      ],
+      "metadata": {
+        "id": "LAgCbDDoviLJ"
+      }
+    },
+    {
+      "cell_type": "code",
+      "source": [
+        "#Convert Sex and Title to numerical values\n",
+        "title_map = {' Mr': 1, ' Mrs': 2, ' Miss': 3, ' Master': 4, ' Rare': 5}\n",
+        "embarked_map = {'S': 1, 'C': 2, 'Q': 3}\n",
+        "\n",
+        "for df in combine:\n",
+        "    df['Sex'] = df['Sex'].map({'female': 1, 'male': 0})\n",
+        "    df['Title'] = df['Title'].map(title_map).fillna(0)\n",
+        "    df['Embarked'] = df['Embarked'].map(embarked_map)"
+      ],
+      "metadata": {
+        "execution": {
+          "iopub.status.busy": "2021-12-15T02:27:32.496997Z",
+          "iopub.execute_input": "2021-12-15T02:27:32.497221Z",
+          "iopub.status.idle": "2021-12-15T02:27:32.514611Z",
+          "shell.execute_reply.started": "2021-12-15T02:27:32.497193Z",
+          "shell.execute_reply": "2021-12-15T02:27:32.513779Z"
+        },
+        "trusted": true,
+        "id": "A1M8xYZLviLJ"
+      },
+      "execution_count": null,
+      "outputs": []
+    },
+    {
+      "cell_type": "code",
+      "source": [
+        "train.head(10)"
+      ],
+      "metadata": {
+        "execution": {
+          "iopub.status.busy": "2021-12-15T02:27:32.516531Z",
+          "iopub.execute_input": "2021-12-15T02:27:32.517056Z",
+          "iopub.status.idle": "2021-12-15T02:27:32.543587Z",
+          "shell.execute_reply.started": "2021-12-15T02:27:32.517013Z",
+          "shell.execute_reply": "2021-12-15T02:27:32.542679Z"
+        },
+        "trusted": true,
+        "id": "1YTCplLyviLJ"
+      },
+      "execution_count": null,
+      "outputs": []
+    },
+    {
+      "cell_type": "code",
+      "source": [
+        "#Drop less useful columns (Name, Ticket, and Cabin)\n",
+        "for df in combine:\n",
+        "    df.drop(columns=['Ticket', 'Cabin', 'Name'], inplace=True)\n",
+        "    #train = train.drop(columns=['Ticket', 'Cabin', 'Name'])\n",
+        "    #test = test.drop(columns=['Ticket', 'Cabin', 'Name'])\n"
+      ],
+      "metadata": {
+        "execution": {
+          "iopub.status.busy": "2021-12-15T02:27:32.544804Z",
+          "iopub.execute_input": "2021-12-15T02:27:32.54505Z",
+          "iopub.status.idle": "2021-12-15T02:27:32.558009Z",
+          "shell.execute_reply.started": "2021-12-15T02:27:32.545021Z",
+          "shell.execute_reply": "2021-12-15T02:27:32.556367Z"
+        },
+        "trusted": true,
+        "id": "VVcaHqSLviLJ"
+      },
+      "execution_count": null,
+      "outputs": []
+    },
+    {
+      "cell_type": "code",
+      "source": [
+        "#Print unique Pclass to figure out where a problem started\n",
+        "train['Pclass'].unique()"
+      ],
+      "metadata": {
+        "execution": {
+          "iopub.status.busy": "2021-12-15T02:27:32.560015Z",
+          "iopub.execute_input": "2021-12-15T02:27:32.560465Z",
+          "iopub.status.idle": "2021-12-15T02:27:32.571461Z",
+          "shell.execute_reply.started": "2021-12-15T02:27:32.560427Z",
+          "shell.execute_reply": "2021-12-15T02:27:32.570442Z"
+        },
+        "trusted": true,
+        "id": "G1ENRMIPviLJ"
+      },
+      "execution_count": null,
+      "outputs": []
+    },
+    {
+      "cell_type": "markdown",
+      "source": [
+        "### Fill in null values"
+      ],
+      "metadata": {
+        "id": "EMBMUYT7viLK"
+      }
+    },
+    {
+      "cell_type": "code",
+      "source": [
+        "#look for null values\n",
+        "train.info()"
+      ],
+      "metadata": {
+        "execution": {
+          "iopub.status.busy": "2021-12-15T02:27:32.573094Z",
+          "iopub.execute_input": "2021-12-15T02:27:32.573348Z",
+          "iopub.status.idle": "2021-12-15T02:27:32.589337Z",
+          "shell.execute_reply.started": "2021-12-15T02:27:32.573319Z",
+          "shell.execute_reply": "2021-12-15T02:27:32.588455Z"
+        },
+        "trusted": true,
+        "id": "HU-dwrwFviLK"
+      },
+      "execution_count": null,
+      "outputs": []
+    },
+    {
+      "cell_type": "code",
+      "source": [
+        "#Fill in missing age values by taking the mean of values grouped by Pclass and gender\n",
+        "median_ages = np.zeros((2, 3))    #array for median ages\n",
+        "\n",
+        "for df in combine:\n",
+        "    for i in range(0, 2):         #male or female\n",
+        "        for j in range(0, 3):     #3 different Pclasses\n",
+        "            SP_df = df[((df['Sex'] == i) &\n",
+        "                         (df['Pclass'] == j+1))]['Age'].dropna()\n",
+        "            age_median = SP_df.median()\n",
+        "            median_ages[i, j] = age_median\n",
+        "    \n",
+        "    for i in range(0, 2):\n",
+        "        for j in range(0, 3):\n",
+        "            df.loc[ (df.Age.isnull()) & (df.Sex == i) & (df.Pclass == j +1), 'Age'] = median_ages[i, j]\n",
+        "    df['Age'] = df['Age'].astype(int)\n",
+        "\n",
+        "train.head(10)"
+      ],
+      "metadata": {
+        "execution": {
+          "iopub.status.busy": "2021-12-15T02:27:32.59087Z",
+          "iopub.execute_input": "2021-12-15T02:27:32.591087Z",
+          "iopub.status.idle": "2021-12-15T02:27:32.647876Z",
+          "shell.execute_reply.started": "2021-12-15T02:27:32.591061Z",
+          "shell.execute_reply": "2021-12-15T02:27:32.646792Z"
+        },
+        "trusted": true,
+        "id": "KohEmLUZviLK"
+      },
+      "execution_count": null,
+      "outputs": []
+    },
+    {
+      "cell_type": "code",
+      "source": [
+        "#Fill in Fare using the median of fare grouped by Pclass\n",
+        "median_fares = np.zeros((3,1))\n",
+        "\n",
+        "for df in combine:\n",
+        "    for i in range (0, 3):\n",
+        "        fares = df[df['Pclass'] == i+1]['Fare']\n",
+        "        fares_median = fares.median()\n",
+        "        median_fares[i] = fares_median\n",
+        "    \n",
+        "    for i in range(0, 3):\n",
+        "        df.loc[ (df.Fare.isnull()) & df.Pclass == i + 1, 'Fare'] = median_fares[i]\n",
+        "    \n",
+        "    df['Fare'] = df['Fare'].astype(int)\n",
+        "    \n",
+        "test.info()\n"
+      ],
+      "metadata": {
+        "execution": {
+          "iopub.status.busy": "2021-12-15T02:27:32.649482Z",
+          "iopub.execute_input": "2021-12-15T02:27:32.649848Z",
+          "iopub.status.idle": "2021-12-15T02:27:32.682401Z",
+          "shell.execute_reply.started": "2021-12-15T02:27:32.649805Z",
+          "shell.execute_reply": "2021-12-15T02:27:32.681427Z"
+        },
+        "trusted": true,
+        "id": "bLsVUmICviLK"
+      },
+      "execution_count": null,
+      "outputs": []
+    },
+    {
+      "cell_type": "code",
+      "source": [
+        "#Fill in embarked\n",
+        "embarked_mode = train.Embarked.dropna().mode()[0]\n",
+        "\n",
+        "for df in combine:\n",
+        "    df['Embarked'] = df['Embarked'].fillna(embarked_mode)"
+      ],
+      "metadata": {
+        "execution": {
+          "iopub.status.busy": "2021-12-15T02:27:32.683953Z",
+          "iopub.execute_input": "2021-12-15T02:27:32.684354Z",
+          "iopub.status.idle": "2021-12-15T02:27:32.69321Z",
+          "shell.execute_reply.started": "2021-12-15T02:27:32.684305Z",
+          "shell.execute_reply": "2021-12-15T02:27:32.691836Z"
+        },
+        "trusted": true,
+        "id": "sc8xEq9gviLK"
+      },
+      "execution_count": null,
+      "outputs": []
+    },
+    {
+      "cell_type": "markdown",
+      "source": [
+        "## Simplify features by grouping"
+      ],
+      "metadata": {
+        "id": "rKlbI-yiviLL"
+      }
+    },
+    {
+      "cell_type": "code",
+      "source": [
+        "#Create age group based on ages\n",
+        "for df in combine:\n",
+        "    df.loc[df['Age'] <= 2, 'AgeGroup'] = 0\n",
+        "    df.loc[((df['Age'] > 2) & (df['Age'] <= 18)), 'AgeGroup'] = 1\n",
+        "    df.loc[((df['Age'] > 18) & (df['Age'] <= 29)), 'AgeGroup'] = 2\n",
+        "    df.loc[((df['Age'] > 29) & (df['Age'] <= 44)), 'AgeGroup'] = 3\n",
+        "    df.loc[((df['Age'] > 44) & (df['Age'] <= 65)), 'AgeGroup'] = 4\n",
+        "    df.loc[((df['Age'] > 65)), 'AgeGroup'] = 5\n",
+        "    \n",
+        "train.head(10)"
+      ],
+      "metadata": {
+        "execution": {
+          "iopub.status.busy": "2021-12-15T02:27:32.69806Z",
+          "iopub.execute_input": "2021-12-15T02:27:32.698394Z",
+          "iopub.status.idle": "2021-12-15T02:27:32.743632Z",
+          "shell.execute_reply.started": "2021-12-15T02:27:32.698359Z",
+          "shell.execute_reply": "2021-12-15T02:27:32.742672Z"
+        },
+        "trusted": true,
+        "id": "g5jNOuQ3viLL"
+      },
+      "execution_count": null,
+      "outputs": []
+    },
+    {
+      "cell_type": "code",
+      "source": [
+        "#My first attempt changed all the values in the row to the median age\n",
+        "#The next couple of lines are my process for identifying and fixing the issue\n",
+        "#Verify problem values \n",
+        "#**Problem solved! Leaving code to see process**\n",
+        "train['Pclass'].unique()"
+      ],
+      "metadata": {
+        "execution": {
+          "iopub.status.busy": "2021-12-15T02:27:32.745226Z",
+          "iopub.execute_input": "2021-12-15T02:27:32.745604Z",
+          "iopub.status.idle": "2021-12-15T02:27:32.75469Z",
+          "shell.execute_reply.started": "2021-12-15T02:27:32.745566Z",
+          "shell.execute_reply": "2021-12-15T02:27:32.753146Z"
+        },
+        "trusted": true,
+        "id": "voLQN9j_viLL"
+      },
+      "execution_count": null,
+      "outputs": []
+    },
+    {
+      "cell_type": "code",
+      "source": [
+        "#Examine the rows containing the problematic values\n",
+        "expected = [1.0, 2.0, 3.0]\n",
+        "\n",
+        "df[~df.Pclass.isin(expected)]"
+      ],
+      "metadata": {
+        "execution": {
+          "iopub.status.busy": "2021-12-15T02:27:32.756224Z",
+          "iopub.execute_input": "2021-12-15T02:27:32.75722Z",
+          "iopub.status.idle": "2021-12-15T02:27:32.774489Z",
+          "shell.execute_reply.started": "2021-12-15T02:27:32.757164Z",
+          "shell.execute_reply": "2021-12-15T02:27:32.77376Z"
+        },
+        "trusted": true,
+        "id": "cT96TIJ-viLL"
+      },
+      "execution_count": null,
+      "outputs": []
+    },
+    {
+      "cell_type": "code",
+      "source": [
+        "#Create FareBand feature\n",
+        "#First see where cut off between classes\n",
+        "train_agg = train.groupby('Pclass').agg({\n",
+        "    'Fare' : [np.min, np.max, np.mean, np.std] })\n",
+        "\n",
+        "train_agg"
+      ],
+      "metadata": {
+        "execution": {
+          "iopub.status.busy": "2021-12-15T02:27:32.776917Z",
+          "iopub.execute_input": "2021-12-15T02:27:32.777534Z",
+          "iopub.status.idle": "2021-12-15T02:27:32.799207Z",
+          "shell.execute_reply.started": "2021-12-15T02:27:32.777494Z",
+          "shell.execute_reply": "2021-12-15T02:27:32.798145Z"
+        },
+        "trusted": true,
+        "id": "J9end1xzviLM"
+      },
+      "execution_count": null,
+      "outputs": []
+    },
+    {
+      "cell_type": "code",
+      "source": [
+        "#Create bands using a different method, as I realized the above is just Pclass\n",
+        "train['FareBands_'] = pd.qcut(train['Fare'], 6)\n",
+        "train[['FareBands_', 'Survived']].groupby(['FareBands_'], as_index=False).mean()\\\n",
+        "    .sort_values(by='FareBands_', ascending=True)"
+      ],
+      "metadata": {
+        "execution": {
+          "iopub.status.busy": "2021-12-15T02:27:32.800739Z",
+          "iopub.execute_input": "2021-12-15T02:27:32.801169Z",
+          "iopub.status.idle": "2021-12-15T02:27:32.82503Z",
+          "shell.execute_reply.started": "2021-12-15T02:27:32.801131Z",
+          "shell.execute_reply": "2021-12-15T02:27:32.82421Z"
+        },
+        "trusted": true,
+        "id": "TUqJGv9yviLM"
+      },
+      "execution_count": null,
+      "outputs": []
+    },
+    {
+      "cell_type": "code",
+      "source": [
+        "train.head(10)"
+      ],
+      "metadata": {
+        "execution": {
+          "iopub.status.busy": "2021-12-15T02:27:32.826071Z",
+          "iopub.execute_input": "2021-12-15T02:27:32.826421Z",
+          "iopub.status.idle": "2021-12-15T02:27:32.850004Z",
+          "shell.execute_reply.started": "2021-12-15T02:27:32.826392Z",
+          "shell.execute_reply": "2021-12-15T02:27:32.848744Z"
+        },
+        "trusted": true,
+        "id": "mOfs5vhfviLM"
+      },
+      "execution_count": null,
+      "outputs": []
+    },
+    {
+      "cell_type": "code",
+      "source": [
+        "#Convert bands into ordinal values\n",
+        "\n",
+        "for df in combine:\n",
+        "    df['Fare'] = df['Fare'].astype(float)\n",
+        "    df.loc[ df['Fare'] <= 7.775, 'FareBand'] = 0\n",
+        "    df.loc[(df['Fare'] > 7.775) & (df['Fare'] <= 8.662), 'FareBand'] = 1\n",
+        "    df.loc[(df['Fare'] > 8.662) & (df['Fare'] <= 14.454), 'FareBand'] = 2\n",
+        "    df.loc[(df['Fare'] > 14.454) & (df['Fare'] <= 26.0), 'FareBand'] = 3\n",
+        "    df.loc[(df['Fare'] > 26.0) & (df['Fare'] <= 52.369), 'FareBand'] = 4\n",
+        "    df.loc[ df['Fare'] > 52.369, 'FareBand'] = 5\n",
+        "    \n",
+        "#Drop farebands\n",
+        "train = train.drop(columns='FareBands_')"
+      ],
+      "metadata": {
+        "execution": {
+          "iopub.status.busy": "2021-12-15T02:27:32.852007Z",
+          "iopub.execute_input": "2021-12-15T02:27:32.852865Z",
+          "iopub.status.idle": "2021-12-15T02:27:32.87952Z",
+          "shell.execute_reply.started": "2021-12-15T02:27:32.852814Z",
+          "shell.execute_reply": "2021-12-15T02:27:32.877903Z"
+        },
+        "trusted": true,
+        "id": "fx6vEq1GviLM"
+      },
+      "execution_count": null,
+      "outputs": []
+    },
+    {
+      "cell_type": "code",
+      "source": [
+        "combine = [train, test]"
+      ],
+      "metadata": {
+        "execution": {
+          "iopub.status.busy": "2021-12-15T02:27:32.881109Z",
+          "iopub.execute_input": "2021-12-15T02:27:32.881495Z",
+          "iopub.status.idle": "2021-12-15T02:27:32.888019Z",
+          "shell.execute_reply.started": "2021-12-15T02:27:32.88145Z",
+          "shell.execute_reply": "2021-12-15T02:27:32.886117Z"
+        },
+        "trusted": true,
+        "id": "hynS86cyviLM"
+      },
+      "execution_count": null,
+      "outputs": []
+    },
+    {
+      "cell_type": "markdown",
+      "source": [
+        "## Create a new feature by combining existing features"
+      ],
+      "metadata": {
+        "id": "_LUJbmQHviLM"
+      }
+    },
+    {
+      "cell_type": "code",
+      "source": [
+        "for df in combine:\n",
+        "    df['FamilySize'] = df['SibSp'] + df['Parch'] + 1\n",
+        "    \n",
+        "train[['FamilySize', 'Survived']].groupby(['FamilySize'], as_index=False).mean().sort_values(by='Survived', ascending=False)"
+      ],
+      "metadata": {
+        "execution": {
+          "iopub.status.busy": "2021-12-15T02:27:32.889259Z",
+          "iopub.execute_input": "2021-12-15T02:27:32.8902Z",
+          "iopub.status.idle": "2021-12-15T02:27:32.9164Z",
+          "shell.execute_reply.started": "2021-12-15T02:27:32.890152Z",
+          "shell.execute_reply": "2021-12-15T02:27:32.915742Z"
+        },
+        "trusted": true,
+        "id": "6qRSs9fAviLN"
+      },
+      "execution_count": null,
+      "outputs": []
+    },
+    {
+      "cell_type": "markdown",
+      "source": [
+        "## Create an artificial feature by combining two features"
+      ],
+      "metadata": {
+        "id": "RTAElc4pviLN"
+      }
+    },
+    {
+      "cell_type": "code",
+      "source": [
+        "#Create artificial feature\n",
+        "for df in combine:\n",
+        "    df['AgeGroup*Class'] = df.AgeGroup * df.Pclass\n",
+        "    "
+      ],
+      "metadata": {
+        "execution": {
+          "iopub.status.busy": "2021-12-15T02:27:32.917465Z",
+          "iopub.execute_input": "2021-12-15T02:27:32.917917Z",
+          "iopub.status.idle": "2021-12-15T02:27:32.933752Z",
+          "shell.execute_reply.started": "2021-12-15T02:27:32.91788Z",
+          "shell.execute_reply": "2021-12-15T02:27:32.932468Z"
+        },
+        "trusted": true,
+        "id": "3reRCWb6viLN"
+      },
+      "execution_count": null,
+      "outputs": []
+    },
+    {
+      "cell_type": "markdown",
+      "source": [
+        "## Feature Selection"
+      ],
+      "metadata": {
+        "id": "lkO2wf-qviLN"
+      }
+    },
+    {
+      "cell_type": "code",
+      "source": [
+        "#Feature Scaling of single column: Fare\n",
+        "#all_features = ['Survived', 'Pclass', 'Sex', 'Age', 'SibSp', 'Parch', 'Fare', 'Embarked', 'Title', 'AgeGroup', 'FareBand', 'FamilySize', 'AgeGroup*Class']\n",
+        "features = ['Pclass', 'Sex', 'Title', 'FareBand', 'AgeGroup', 'FamilySize']"
+      ],
+      "metadata": {
+        "execution": {
+          "iopub.status.busy": "2021-12-15T02:27:32.935189Z",
+          "iopub.execute_input": "2021-12-15T02:27:32.935573Z",
+          "iopub.status.idle": "2021-12-15T02:27:32.948023Z",
+          "shell.execute_reply.started": "2021-12-15T02:27:32.935536Z",
+          "shell.execute_reply": "2021-12-15T02:27:32.94704Z"
+        },
+        "trusted": true,
+        "id": "-L_PAWN6viLN"
+      },
+      "execution_count": null,
+      "outputs": []
+    },
+    {
+      "cell_type": "markdown",
+      "source": [
+        "## Model, Predict and Solve"
+      ],
+      "metadata": {
+        "id": "KLN8ilfiviLN"
+      }
+    },
+    {
+      "cell_type": "code",
+      "source": [
+        "#Create training and test sets\n",
+        "X_train = train[features]\n",
+        "y_train = train['Survived']\n",
+        "\n",
+        "X_test = test[features].copy()\n",
+        "X_train.shape, y_train.shape, X_test.shape"
+      ],
+      "metadata": {
+        "execution": {
+          "iopub.status.busy": "2021-12-15T02:27:32.949895Z",
+          "iopub.execute_input": "2021-12-15T02:27:32.950161Z",
+          "iopub.status.idle": "2021-12-15T02:27:32.968103Z",
+          "shell.execute_reply.started": "2021-12-15T02:27:32.95013Z",
+          "shell.execute_reply": "2021-12-15T02:27:32.967038Z"
+        },
+        "trusted": true,
+        "id": "Bne7xp71viLN"
+      },
+      "execution_count": null,
+      "outputs": []
+    },
+    {
+      "cell_type": "markdown",
+      "source": [
+        "#### Logistic Regression"
+      ],
+      "metadata": {
+        "id": "PHwdflxvviLO"
+      }
+    },
+    {
+      "cell_type": "code",
+      "source": [
+        "#Fit, train, and run model\n",
+        "logreg = LogisticRegression()\n",
+        "logreg.fit(X_train, y_train)\n",
+        "\n",
+        "cv = cross_val_score(logreg, X_train, y_train, cv=5)\n",
+        "acc_logreg = cv.mean()\n",
+        "acc_logreg"
+      ],
+      "metadata": {
+        "execution": {
+          "iopub.status.busy": "2021-12-15T02:27:32.969373Z",
+          "iopub.execute_input": "2021-12-15T02:27:32.969782Z",
+          "iopub.status.idle": "2021-12-15T02:27:33.078646Z",
+          "shell.execute_reply.started": "2021-12-15T02:27:32.969741Z",
+          "shell.execute_reply": "2021-12-15T02:27:33.078042Z"
+        },
+        "trusted": true,
+        "id": "7V3jFQvbviLO"
+      },
+      "execution_count": null,
+      "outputs": []
+    },
+    {
+      "cell_type": "code",
+      "source": [
+        "#Print coefficients of each feature\n",
+        "coeff_df = pd.DataFrame(X_train.columns)\n",
+        "coeff_df.columns = ['Feature']\n",
+        "coeff_df[\"Correlation\"] = pd.Series(logreg.coef_[0])\n",
+        "\n",
+        "coeff_df.sort_values(by='Correlation', ascending=False)"
+      ],
+      "metadata": {
+        "execution": {
+          "iopub.status.busy": "2021-12-15T02:27:33.079896Z",
+          "iopub.execute_input": "2021-12-15T02:27:33.080628Z",
+          "iopub.status.idle": "2021-12-15T02:27:33.095161Z",
+          "shell.execute_reply.started": "2021-12-15T02:27:33.08057Z",
+          "shell.execute_reply": "2021-12-15T02:27:33.094464Z"
+        },
+        "trusted": true,
+        "id": "HWbTyMCeviLO"
+      },
+      "execution_count": null,
+      "outputs": []
+    },
+    {
+      "cell_type": "markdown",
+      "source": [
+        "#### Support Vector Classifier"
+      ],
+      "metadata": {
+        "id": "q5zhzEHBviLO"
+      }
+    },
+    {
+      "cell_type": "code",
+      "source": [
+        "svc = SVC()\n",
+        "svc.fit(X_train, y_train)\n",
+        "\n",
+        "cv = cross_val_score(svc, X_train, y_train, cv=5)\n",
+        "acc_svc = cv.mean()\n",
+        "acc_svc"
+      ],
+      "metadata": {
+        "execution": {
+          "iopub.status.busy": "2021-12-15T02:27:33.096417Z",
+          "iopub.execute_input": "2021-12-15T02:27:33.097472Z",
+          "iopub.status.idle": "2021-12-15T02:27:33.251919Z",
+          "shell.execute_reply.started": "2021-12-15T02:27:33.097431Z",
+          "shell.execute_reply": "2021-12-15T02:27:33.250731Z"
+        },
+        "trusted": true,
+        "id": "iyZmQohAviLO"
+      },
+      "execution_count": null,
+      "outputs": []
+    },
+    {
+      "cell_type": "markdown",
+      "source": [
+        "#### K-Nearest Neighbors"
+      ],
+      "metadata": {
+        "id": "pt_DKeeQviLO"
+      }
+    },
+    {
+      "cell_type": "code",
+      "source": [
+        "knn = KNeighborsClassifier(n_neighbors = 3)\n",
+        "knn.fit(X_train, y_train)\n",
+        "\n",
+        "cv = cross_val_score(knn, X_train, y_train, cv=5)\n",
+        "print(cv)\n",
+        "acc_knn = cv.mean()\n",
+        "acc_knn"
+      ],
+      "metadata": {
+        "execution": {
+          "iopub.status.busy": "2021-12-15T02:27:33.255111Z",
+          "iopub.execute_input": "2021-12-15T02:27:33.255496Z",
+          "iopub.status.idle": "2021-12-15T02:27:33.352006Z",
+          "shell.execute_reply.started": "2021-12-15T02:27:33.255447Z",
+          "shell.execute_reply": "2021-12-15T02:27:33.350581Z"
+        },
+        "trusted": true,
+        "id": "XNHpgRQJviLP"
+      },
+      "execution_count": null,
+      "outputs": []
+    },
+    {
+      "cell_type": "markdown",
+      "source": [
+        "#### Random Forest Classifier"
+      ],
+      "metadata": {
+        "id": "ddgpqRh_viLP"
+      }
+    },
+    {
+      "cell_type": "code",
+      "source": [
+        "rfc = RandomForestClassifier(criterion = 'entropy',\n",
+        "                            max_depth = 20,\n",
+        "                            min_samples_leaf = 1,)\n",
+        "rfc.fit(X_train, y_train)\n",
+        "\n",
+        "cv = cross_val_score(rfc, X_train, y_train, cv=5)\n",
+        "acc_rfc = cv.mean()\n",
+        "acc_rfc"
+      ],
+      "metadata": {
+        "execution": {
+          "iopub.status.busy": "2021-12-15T02:27:33.353642Z",
+          "iopub.execute_input": "2021-12-15T02:27:33.353939Z",
+          "iopub.status.idle": "2021-12-15T02:27:34.850785Z",
+          "shell.execute_reply.started": "2021-12-15T02:27:33.353905Z",
+          "shell.execute_reply": "2021-12-15T02:27:34.849902Z"
+        },
+        "trusted": true,
+        "id": "v5gIognkviLP"
+      },
+      "execution_count": null,
+      "outputs": []
+    },
+    {
+      "cell_type": "markdown",
+      "source": [
+        "#### Gradient Boosting Classifier"
+      ],
+      "metadata": {
+        "id": "Za-i5VeuviLP"
+      }
+    },
+    {
+      "cell_type": "code",
+      "source": [
+        "gbc = GradientBoostingClassifier(n_estimators=50,\n",
+        "                                 loss = 'exponential',\n",
+        "                                 learning_rate=0.5,\n",
+        "                                 max_depth=1,\n",
+        "                                 criterion = 'friedman_mse',\n",
+        "                                 random_state=0)\n",
+        "gbc.fit(X_train, y_train)\n",
+        "\n",
+        "cv = cross_val_score(gbc, X_train, y_train, cv=5)\n",
+        "acc_gbc = cv.mean()\n",
+        "acc_gbc"
+      ],
+      "metadata": {
+        "execution": {
+          "iopub.status.busy": "2021-12-15T02:27:34.851978Z",
+          "iopub.execute_input": "2021-12-15T02:27:34.852922Z",
+          "iopub.status.idle": "2021-12-15T02:27:35.108972Z",
+          "shell.execute_reply.started": "2021-12-15T02:27:34.852871Z",
+          "shell.execute_reply": "2021-12-15T02:27:35.108069Z"
+        },
+        "trusted": true,
+        "id": "ggrdkJ-RviLP"
+      },
+      "execution_count": null,
+      "outputs": []
+    },
+    {
+      "cell_type": "markdown",
+      "source": [
+        "#### Naive Bayes"
+      ],
+      "metadata": {
+        "id": "R6XrvNNaviLP"
+      }
+    },
+    {
+      "cell_type": "code",
+      "source": [
+        "gnb = GaussianNB()\n",
+        "gnb.fit(X_train, y_train)\n",
+        "\n",
+        "cv = cross_val_score(gnb, X_train, y_train, cv=5)\n",
+        "acc_gnb = cv.mean()\n",
+        "acc_gnb"
+      ],
+      "metadata": {
+        "execution": {
+          "iopub.status.busy": "2021-12-15T02:27:35.110139Z",
+          "iopub.execute_input": "2021-12-15T02:27:35.110373Z",
+          "iopub.status.idle": "2021-12-15T02:27:35.149788Z",
+          "shell.execute_reply.started": "2021-12-15T02:27:35.110344Z",
+          "shell.execute_reply": "2021-12-15T02:27:35.148948Z"
+        },
+        "trusted": true,
+        "id": "LOl8lOznviLQ"
+      },
+      "execution_count": null,
+      "outputs": []
+    },
+    {
+      "cell_type": "markdown",
+      "source": [
+        "#### Perceptron"
+      ],
+      "metadata": {
+        "id": "TNLzkckXviLQ"
+      }
+    },
+    {
+      "cell_type": "code",
+      "source": [
+        "ptron = Perceptron()\n",
+        "ptron.fit(X_train, y_train)\n",
+        "\n",
+        "cv = cross_val_score(ptron, X_train, y_train, cv=5)\n",
+        "acc_ptron = cv.mean()\n",
+        "acc_ptron"
+      ],
+      "metadata": {
+        "execution": {
+          "iopub.status.busy": "2021-12-15T02:27:35.151085Z",
+          "iopub.execute_input": "2021-12-15T02:27:35.151326Z",
+          "iopub.status.idle": "2021-12-15T02:27:35.198545Z",
+          "shell.execute_reply.started": "2021-12-15T02:27:35.151296Z",
+          "shell.execute_reply": "2021-12-15T02:27:35.197636Z"
+        },
+        "trusted": true,
+        "id": "Sb_cl1ECviLQ"
+      },
+      "execution_count": null,
+      "outputs": []
+    },
+    {
+      "cell_type": "markdown",
+      "source": [
+        "#### Hypertuning"
+      ],
+      "metadata": {
+        "id": "NcOv-d61viLQ"
+      }
+    },
+    {
+      "cell_type": "code",
+      "source": [
+        "#Tune hyperparameters\n",
+        "from sklearn.model_selection import RandomizedSearchCV\n",
+        "from sklearn.model_selection import GridSearchCV\n",
+        "from sklearn.model_selection import StratifiedShuffleSplit\n",
+        "\n",
+        "sss = StratifiedShuffleSplit(n_splits=10, test_size = 0.3, random_state=0)\n",
+        "\n",
+        "def grid_search_fun (classifier):\n",
+        "    params = [{'criterion': ['gini'], #Random Forest\n",
+        "               'max_depth': [20],\n",
+        "               #'max_features': ['auto', 3, 5, 8],\n",
+        "               #'class_weight': [None, 'balanced', 'balanced_subsample'],\n",
+        "               'max_leaf_nodes': [None],\n",
+        "               #'min_impurity_decrease': [0.0, 0.1, 0.50, 1],\n",
+        "               'min_samples_leaf': [1]\n",
+        "              }]\n",
+        "    \n",
+        "    grid_search = GridSearchCV(estimator = classifier,\n",
+        "                           param_grid = params,\n",
+        "                           scoring = 'recall',\n",
+        "                           cv = sss)\n",
+        "    grid_search.fit(X_train, y_train)\n",
+        "    best = grid_search.best_params_\n",
+        "    return str(best)\n",
+        "\n",
+        "#print(grid_search_fun(rfc))"
+      ],
+      "metadata": {
+        "execution": {
+          "iopub.status.busy": "2021-12-15T02:27:35.199935Z",
+          "iopub.execute_input": "2021-12-15T02:27:35.200171Z",
+          "iopub.status.idle": "2021-12-15T02:27:35.209445Z",
+          "shell.execute_reply.started": "2021-12-15T02:27:35.200141Z",
+          "shell.execute_reply": "2021-12-15T02:27:35.208725Z"
+        },
+        "trusted": true,
+        "id": "yJyT5G3gviLR"
+      },
+      "execution_count": null,
+      "outputs": []
+    },
+    {
+      "cell_type": "code",
+      "source": [
+        "models = pd.DataFrame({\n",
+        "    'Model': ['Logistic Regression', 'Support Vector Classifier', 'KNN',\n",
+        "              'Random Forest', 'Gradient Boosting Classifier', \n",
+        "              'Naive Bayes', 'Perceptron'],\n",
+        "    'Score': [acc_logreg, acc_svc, acc_knn,\n",
+        "              acc_rfc, acc_gbc, \n",
+        "              acc_gnb, acc_ptron] })\n",
+        "models.sort_values(by='Score', ascending=False)"
+      ],
+      "metadata": {
+        "execution": {
+          "iopub.status.busy": "2021-12-15T02:27:35.210856Z",
+          "iopub.execute_input": "2021-12-15T02:27:35.211573Z",
+          "iopub.status.idle": "2021-12-15T02:27:35.231387Z",
+          "shell.execute_reply.started": "2021-12-15T02:27:35.211538Z",
+          "shell.execute_reply": "2021-12-15T02:27:35.230509Z"
+        },
+        "trusted": true,
+        "id": "m9YgFPoOviLR"
+      },
+      "execution_count": null,
+      "outputs": []
+    },
+    {
+      "cell_type": "code",
+      "source": [
+        "predictions = svc.predict(X_test)\n",
+        "\n",
+        "output = pd.DataFrame({'PassengerId': test.PassengerId, 'Survived': predictions})\n",
+        "output.to_csv('submission.csv', index=False)\n",
+        "print(\"Your submission was successfully saved!\")"
+      ],
+      "metadata": {
+        "execution": {
+          "iopub.status.busy": "2021-12-15T02:29:38.209815Z",
+          "iopub.execute_input": "2021-12-15T02:29:38.210821Z",
+          "iopub.status.idle": "2021-12-15T02:29:38.227977Z",
+          "shell.execute_reply.started": "2021-12-15T02:29:38.210621Z",
+          "shell.execute_reply": "2021-12-15T02:29:38.226902Z"
+        },
+        "trusted": true,
+        "id": "rGXYDaADviLS"
+      },
+      "execution_count": null,
+      "outputs": []
+    }
+  ]
+}
